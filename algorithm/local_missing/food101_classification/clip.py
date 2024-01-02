@@ -132,6 +132,8 @@ class Server(BasicServer):
         # prompt - prototype attn matrix
         A = torch.zeros(size=(self.n_leads, n_models, n_models))
         for m in range(self.n_leads):
+            # no client has lead m in the current round, in this case, prompt pool of m = [0] -> atn score in inference stage = 0
+            if len(modal_dict[m])==0: continue  
             prtts = torch.stack([
                 torch.cat([
                     ui.data.view(-1) for ui in self.clients[self.selected_clients[k]].model.prototypes[m].parameters()
@@ -146,9 +148,9 @@ class Server(BasicServer):
                 ]) for k in modal_dict[m]
             ])
             dim = params.shape[1]
-            prm_logits = params @ params.t() / np.sqrt(dim)
+            prm_logits = params @ params.t() / np.sqrt(dim) # n_clients x n_clients
             
-            final_attn = torch.softmax((prtt_logits + prm_logits)*0.5, dim=1)
+            final_attn = torch.exp((prtt_logits + prm_logits)*0.5, dim=1)
             for ik, k in enumerate(modal_dict[m]):
                 for il, l in enumerate(modal_dict[m]):
                     A[m, k, l] = final_attn[ik, il]
@@ -156,15 +158,31 @@ class Server(BasicServer):
         # personalized aggregate
         for m in range(self.n_leads):
             for k in modal_dict[m]:
+                # prompt
                 self.clients[self.selected_clients[k]].model.prompts[m] = fmodule._model_sum([
-                    self.clients[self.selected_clients[l]].model.prompts[m] * A[m, k, l] for l in modal_dict[m]
+                    self.clients[self.selected_clients[l]].model.prompts[m] * (A[m, k, l] / torch.sum(A[m, k, :].sum(dim=-1))) for l in modal_dict[m]
                 ])
+                # prototype
                 self.clients[self.selected_clients[k]].model.prototypes[m] = fmodule._model_sum([
-                    self.clients[self.selected_clients[l]].model.prototypes[m] * A[m, k, l] for l in modal_dict[m]
+                    self.clients[self.selected_clients[l]].model.prototypes[m] * (A[m, k, l] / torch.sum(A[m, k, :].sum(dim=-1))) for l in modal_dict[m]
                 ])
+        
+        num_lead = {}
+        for m in range(self.n_leads):
+            for k in modal_dict[m]:
+                num_lead[k] = num_lead.get(k, 0) + 1
+        
+        for k in range(n_models):        
+            # classifier
+            if num_lead[k]==2:
                 self.clients[self.selected_clients[k]].model.classifier = fmodule._model_sum([
-                    self.clients[self.selected_clients[l]].model.classifier * A[m, k, l] for l in modal_dict[m]
+                    self.clients[self.selected_clients[l]].model.classifier * (A[:, k, l].sum() / torch.sum(A[:, k, :])) for l in modal_dict[m]
                 ])
+            
+        # global classifier
+        self.model.classifier = fmodule._model_average([
+            self.clients[self.selected_clients[k]].model.classifier for k in range(n_models)
+        ])
                 
         return prompt_pools
     

@@ -18,7 +18,7 @@ python main.py \
     --learning_rate 0.5 \
     --lr_scheduler 0 \
     --learning_rate_decay 1.0 \
-    --batch_size 64 \
+    --batch_size 32 \
     --test_batch_size 1 \
     --gpu 0 \
     --seed 1234 \
