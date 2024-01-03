@@ -81,7 +81,7 @@ class Model(FModule):
     
     @torch.no_grad()
     def query_from_prompt_pool(self, prompt_pool, query=None, attn_prtt=None):
-        # prompt_pool = [(client_ids, pool)]
+        # prompt_pool = [(client_ids, pool)] or None
         
         n_clients, total_seq_len, dims = prompt_pool[1].size()
         k = prompt_pool[1][:, self.prompt_lengths[-1]:, ...]    # n_clients x seq_len x dim
@@ -111,7 +111,7 @@ class Model(FModule):
         batch_size = v.shape[0]
         assert(int(miss_im)+int(miss_txt) <=1)
         
-        v_pool, t_pool = prompt_pools
+        v_pool, t_pool = prompt_pools   # pool can be None
         if not miss_im:
             v0 = self.model.encode_image_by_steps(v, idx=[0])
             v_u, v_p, v_attn = self.query_from_prompt_pool(v_pool, v0)

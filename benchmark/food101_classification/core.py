@@ -154,6 +154,10 @@ class TaskGen(DefaultTaskGen):
             self.specific_training_leads = [[0]]*5 + [[1]]*5 + [[0, 1]]*10
             self.taskname = self.taskname + '_clip_local_missing'
             self.taskpath = os.path.join(self.task_rootpath, self.taskname)
+        if self.missing and self.num_clients==10:
+            self.specific_training_leads = [[0]]*2 + [[1]]*2 + [[0, 1]]*6
+            self.taskname = self.taskname + '_clip_local_missing'
+            self.taskpath = os.path.join(self.task_rootpath, self.taskname)
             
     def load_data(self):
         self.train_data = Food101Dataset(

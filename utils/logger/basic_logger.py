@@ -135,6 +135,8 @@ class Logger(logging.Logger):
             if np.all(nf) and np.any(a):
                 self.info(self.temp.format(key, val[-1]))
                 tmp[key] = val[-1]
+        for n, v in tmp.items():
+            print(n, ':', v)
         if self.meta['wandb']:
             for i in range(7):
                 wandb.define_metric("test_loss"+str(i+1), summary="min")
@@ -241,9 +243,9 @@ class Logger(logging.Logger):
                 ]) / sum([self.server.clients[client_id].datavol for client_id in self.server.selected_clients])
             )
         # output to stdout
-        # self.show_current_output()
-        for n, v in self.output.items():
-            print(n, ':', v)
+        self.show_current_output()
+        # for n, v in self.output.items():
+        #     print(n, ':', v)
 
     def organize_output(self, *args, **kwargs):
         """This method will be called before saving self.output"""

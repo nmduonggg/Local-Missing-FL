@@ -150,7 +150,7 @@ class Server(BasicServer):
             dim = params.shape[1]
             prm_logits = params @ params.t() / np.sqrt(dim) # n_clients x n_clients
             
-            final_attn = torch.exp((prtt_logits + prm_logits)*0.5, dim=1)
+            final_attn = torch.exp((prtt_logits + prm_logits)*0.5)
             for ik, k in enumerate(modal_dict[m]):
                 for il, l in enumerate(modal_dict[m]):
                     A[m, k, l] = final_attn[ik, il]
@@ -295,13 +295,15 @@ class Client(BasicClient):
         for iter in tqdm(range(self.num_steps), total=self.num_steps):
             # get a batch of data
             batch_data = self.get_batch_data()
-            model.zero_grad()
+            optimizer.zero_grad()
             # calculate the loss of the model on batched dataset through task-specified calculator
             loss = self.calculator.train_one_step(model, batch_data, self.modalities)['loss']
             loss.backward()
             optimizer.step()
+        torch.cuda.empty_cache()
+        model.to('cpu')
         
-        return
+        return model
 
     def unpack(self, received_pkg):
         """
@@ -316,8 +318,8 @@ class Client(BasicClient):
         
     def reply(self, svr_pkg):
         v_prompt, t_prompt = self.unpack(svr_pkg)
-        self.train(self.model)
-        cpkg = self.pack(self.model)
+        self.model = self.train(self.model)
+        cpkg = self.pack(self.model.to('cpu'))
         return cpkg
             
     @fmodule.with_multi_gpus
