@@ -163,9 +163,10 @@ cython_debug/
 
 # EasyFL
 fedtask/
-benchmark/RAW_DATA
+benchmark/RAW_DATA/*
 *.ipynb
 *.npy
 *.pt
 *.pth
 *.pth.rar
+
